@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>目標順位ルーレット（4人・固定点なし）</title>
+<title>縛り順位ルーレット（4人固定・固定点なし）</title>
 <style>
   :root {
     --bg:#0b6b2b;     /* 全体背景を緑で統一 */
@@ -59,15 +59,15 @@
   }
   button:disabled { opacity:.6; cursor:not-allowed; }
 
-  /* テーブル間隔を詰める */
+  /* テーブル間隔をさらに詰める */
   table {
     width:100%;
     border-collapse:separate;
-    border-spacing:0 3px; /* ←ここで間を狭く */
+    border-spacing:0 1px; /* ←さらに狭く */
   }
 
   th, td {
-    padding:8px 8px; /* ←ここも小さめに */
+    padding:6px 6px; /* ←小さめに */
     text-align:center;
   }
 
@@ -89,50 +89,38 @@
     border:1px solid rgba(255,255,255,.2);
   }
 
+  .arrow {
+    display:inline-block;
+    min-width:1.6em;
+    padding:0 .2em; /* 縮める */
+  }
+
   .slot {
     display:inline-block;
     min-width:4em;
     font-variant-numeric:tabular-nums;
   }
-
-  .hint { font-size:13px; opacity:.95; }
-
-  .ok, .warn { color:inherit; }
-
-  .footer {
-    margin-top:8px;
-    display:flex;
-    justify-content:space-between;
-    flex-wrap:wrap;
-    gap:8px;
-  }
-
-  code {
-    background:rgba(0,0,0,.25);
-    padding:.1em .35em;
-    border-radius:4px;
-  }
 </style>
 </head>
 <body>
-  <header><h1>目標順位ルーレット（4人固定・固定点なし）</h1></header>
+  <header><h1>縛り順位ルーレット（4人固定・固定点なし）</h1></header>
   <div class="wrap">
     <div class="card">
       <div class="controls">
         <button id="spinBtn">スピン！</button>
         <button id="copyBtn" title="結果をテキストでコピー">コピー</button>
-        <span class="hint">※毎回「自分と同じ順位」は絶対に出ません（完全入れ替え）。乱数は <code>window.crypto</code> を使用。</span>
       </div>
 
-      <table aria-label="実順位から目標順位への対応">
-        <thead><tr><th>実際の順位</th><th>目標順位（最終結果）</th></tr></thead>
+      <table aria-label="実順位から縛り順位への対応">
+        <thead>
+          <tr>
+            <th>実際の順位</th>
+            <th></th>
+            <th>縛り順位</th>
+          </tr>
+        </thead>
         <tbody id="rows"></tbody>
       </table>
-
-      <div class="footer">
-        <span id="status" class="hint"></span>
-        <span class="hint">遊び方：回の最初に一度だけ「スピン！」→この対応を採用</span>
-      </div>
     </div>
   </div>
 
@@ -142,17 +130,14 @@
   const rowsEl = document.getElementById('rows');
   const spinBtn = document.getElementById('spinBtn');
   const copyBtn = document.getElementById('copyBtn');
-  const statusEl = document.getElementById('status');
 
   buildRows();
 
   spinBtn.addEventListener('click', async ()=>{
     disable(true);
-    status('');
     try{
-      const perm = randomDerangement(N);
-      await spinSlotsTo(perm);
-      status('ルーレット完了！この対応でプレイしてね。','ok');
+      const perm = randomDerangement(N); // 固定点なしのランダム割当
+      await spinSlotsTo(perm);           // 各スロットをランダム回転→最終値に停止
     } finally {
       disable(false);
     }
@@ -160,12 +145,12 @@
 
   copyBtn.addEventListener('click', async ()=>{
     const mapping = readCurrentMapping();
-    const text = mapping.map(([i,v]) => `実順位 ${i} → 目標順位 ${v ?? '（未決定）'}`).join('\n');
+    const text = mapping.map(([i,v]) => `実順位 ${i} → 縛り順位 ${v ?? '（未決定）'}`).join('\n');
     try{
       await navigator.clipboard.writeText(text);
-      status('結果をコピーしたよ。','ok');
+      // メッセージ表示は要求により廃止
     }catch{
-      status('コピーに失敗。手動で選択してね。','warn');
+      // 失敗メッセージも廃止
     }
   });
 
@@ -175,6 +160,7 @@
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td><span class="rank-badge">${i} 位</span></td>
+        <td><span class="arrow">→</span></td>
         <td><span class="slot" data-slot="${i}">—</span></td>
       `;
       rowsEl.appendChild(tr);
@@ -195,11 +181,6 @@
     spinBtn.disabled=b; copyBtn.disabled=b;
   }
 
-  function status(msg, kind){
-    statusEl.textContent = msg || '';
-    statusEl.className = 'hint ' + (kind||'');
-  }
-
   function cryptoRandInt(min, max){
     const range = max - min + 1;
     const maxUint = 0xFFFFFFFF;
@@ -213,11 +194,12 @@
     return min + (x % range);
   }
 
+  // 固定点なしの乱順（誰も自分と同じ番号にならない）
   function randomDerangement(n){
     if(n===2) return [2,1];
     const arr = Array.from({length:n}, (_,i)=>i+1);
     for(let i=n-1;i>0;i--){
-      const j = cryptoRandInt(0, i-1);
+      const j = cryptoRandInt(0, i-1); // Fisher-Yates を少し工夫して固定点回避
       [arr[i],arr[j]] = [arr[j],arr[i]];
     }
     return arr;
@@ -227,7 +209,7 @@
     const tasks = [];
     for(let i=1;i<=N;i++){
       const slotEl = rowsEl.querySelector(`[data-slot="${i}"]`);
-      tasks.push(spinOne(slotEl, perm[i-1], i*140));
+      tasks.push(spinOne(slotEl, perm[i-1], i*120)); // 少しずつ遅らせて見やすく
     }
     return Promise.all(tasks);
   }
