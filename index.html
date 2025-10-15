@@ -5,30 +5,88 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>目標順位ルーレット（4人・固定点なし）</title>
 <style>
- :root { --bg:#0b6b2b; --panel:#1b2140; --acc:#6cf; --txt:#eef3ff; }
-  html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
- header{
-   padding:18px 20px;
-   border-bottom:1px solid rgba(255,255,255,.08);
-   background-color:#0b6b2b; /* ←ここ追加！ヘッダーも緑
+  :root {
+    --bg:#0b6b2b;     /* 背景（緑） */
+    --panel:#1b2140;  /* カード面 */
+    --acc:#6cf;       /* ボタン背景などのアクセント */
+    --txt:#fff;       /* 文字は白で統一 */
+    --stroke:#000;    /* ふち色は黒 */
+  }
+
+  /* まず標準の色を白に統一 */
+  html, body {
+    margin:0;
+    height:100%;
+    background:var(--bg);
+    color:var(--txt);
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+  }
+
+  /* すべての要素に黒フチ＆白文字を適用（ボタンやth/td含む） */
+  :where(body, body *) {
+    color: var(--txt) !important;
+    text-shadow:
+      -1px -1px 0 var(--stroke),
+       1px -1px 0 var(--stroke),
+      -1px  1px 0 var(--stroke),
+       1px  1px 0 var(--stroke);
+  }
+
+  header{
+    padding:18px 20px;
+    border-bottom:1px solid rgba(255,255,255,.08);
+    background-color:#0b6b2b; /* ヘッダーも緑 */
+  }
+
   h1{margin:0;font-size:20px;letter-spacing:.3px}
   .wrap{max-width:760px;margin:18px auto;padding:0 16px}
-  .card{background:var(--panel);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:14px 16px}
+
+  .card{
+    background:var(--panel);
+    border:1px solid rgba(255,255,255,.1);
+    border-radius:14px;
+    padding:14px 16px
+  }
+
   .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
-  button{cursor:pointer;border:0;border-radius:10px;padding:10px 14px;font-weight:700;background:var(--acc);color:#041728;box-shadow:0 8px 24px rgba(122,173,221,.28)}
+
+  /* ボタン文字も白に固定（背景はaccのまま） */
+  button{
+    cursor:pointer;border:0;border-radius:10px;
+    padding:10px 14px;font-weight:700;
+    background:var(--acc);
+    /* colorは上の :where で白＋フチ適用済み */
+    box-shadow:0 8px 24px rgba(122,173,221,.28)
+  }
   button:disabled{opacity:.6;cursor:not-allowed}
+
   table{width:100%;border-collapse:separate;border-spacing:0 10px}
   th,td{padding:12px 14px;text-align:center}
-  thead th{font-size:13px;opacity:.8}
- tbody tr{background:#1c7a38;border-radius:10px}
+  thead th{font-size:13px;opacity:.9}
+
+  tbody tr{background:#1c7a38;border-radius:10px}
   tbody tr td:first-child{border-radius:10px 0 0 10px}
   tbody tr td:last-child{border-radius:0 10px 10px 0}
-  .rank-badge{display:inline-block;min-width:2.4em;padding:.25em .6em;border-radius:999px;background:#0a1130;border:1px solid rgba(255,255,255,.15)}
+
+  .rank-badge{
+    display:inline-block;min-width:2.4em;padding:.25em .6em;
+    border-radius:999px;background:#0a1130;
+    border:1px solid rgba(255,255,255,.15)
+  }
   .slot{display:inline-block;min-width:4em;font-variant-numeric:tabular-nums}
-  .hint{font-size:13px;opacity:.85}
-  .ok{color:#9dff9d}
-  .warn{color:#ffd27a}
+
+  .hint{font-size:13px;opacity:.95}
+  /* “全部白”の要望に合わせ、色分けは無効化 */
+  .ok,.warn{color:inherit}
+
   .footer{margin-top:8px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+
+  /* code要素の読みやすさ確保（背景濃色＋白文字） */
+  code{
+    background:rgba(0,0,0,.25);
+    padding:.1em .35em;
+    border-radius:4px;
+  }
 </style>
 </head>
 <body>
@@ -139,8 +197,7 @@
       const j = cryptoRandInt(0, i-1); // 0..i-1（自分以外）
       [arr[i],arr[j]] = [arr[j],arr[i]];
     }
-    // 単一サイクルなので固定点は発生しない
-    return arr;
+    return arr; // 単一サイクルなので固定点は発生しない
   }
 
   // ---- スロット風アニメ ----
