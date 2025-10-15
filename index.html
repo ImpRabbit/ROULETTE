@@ -6,14 +6,12 @@
 <title>目標順位ルーレット（4人・固定点なし）</title>
 <style>
   :root {
-    --bg:#0b6b2b;     /* 背景（緑） */
-    --panel:#1b2140;  /* カード面 */
-    --acc:#6cf;       /* ボタン背景などのアクセント */
-    --txt:#fff;       /* 文字は白で統一 */
-    --stroke:#000;    /* ふち色は黒 */
+    --bg:#0b6b2b;     /* 全体背景を緑で統一 */
+    --acc:#6cf;       /* ボタン背景色 */
+    --txt:#fff;       /* 文字白 */
+    --stroke:#000;    /* 文字ふち黒 */
   }
 
-  /* まず標準の色を白に統一 */
   html, body {
     margin:0;
     height:100%;
@@ -22,7 +20,7 @@
     font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
   }
 
-  /* すべての要素に黒フチ＆白文字を適用（ボタンやth/td含む） */
+  /* 全要素に黒ふち＋白文字 */
   :where(body, body *) {
     color: var(--txt) !important;
     text-shadow:
@@ -32,57 +30,84 @@
        1px  1px 0 var(--stroke);
   }
 
-  header{
+  header {
     padding:18px 20px;
     border-bottom:1px solid rgba(255,255,255,.08);
-    background-color:#0b6b2b; /* ヘッダーも緑 */
+    background-color:var(--bg); /* 緑背景 */
   }
 
-  h1{margin:0;font-size:20px;letter-spacing:.3px}
-  .wrap{max-width:760px;margin:18px auto;padding:0 16px}
+  h1 { margin:0; font-size:20px; letter-spacing:.3px; }
 
-  .card{
-    background:var(--panel);
-    border:1px solid rgba(255,255,255,.1);
+  .wrap { max-width:760px; margin:18px auto; padding:0 16px; }
+
+  .card {
+    background:var(--bg); /* 緑で統一 */
     border-radius:14px;
-    padding:14px 16px
+    padding:14px 16px;
+    border:1px solid rgba(255,255,255,.15);
   }
 
-  .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+  .controls {
+    display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:10px;
+  }
 
-  /* ボタン文字も白に固定（背景はaccのまま） */
-  button{
-    cursor:pointer;border:0;border-radius:10px;
-    padding:10px 14px;font-weight:700;
+  button {
+    cursor:pointer; border:0; border-radius:10px;
+    padding:10px 14px; font-weight:700;
     background:var(--acc);
-    /* colorは上の :where で白＋フチ適用済み */
-    box-shadow:0 8px 24px rgba(122,173,221,.28)
+    box-shadow:0 8px 24px rgba(122,173,221,.28);
   }
-  button:disabled{opacity:.6;cursor:not-allowed}
+  button:disabled { opacity:.6; cursor:not-allowed; }
 
-  table{width:100%;border-collapse:separate;border-spacing:0 10px}
-  th,td{padding:12px 14px;text-align:center}
-  thead th{font-size:13px;opacity:.9}
-
-  tbody tr{background:#1c7a38;border-radius:10px}
-  tbody tr td:first-child{border-radius:10px 0 0 10px}
-  tbody tr td:last-child{border-radius:0 10px 10px 0}
-
-  .rank-badge{
-    display:inline-block;min-width:2.4em;padding:.25em .6em;
-    border-radius:999px;background:#0a1130;
-    border:1px solid rgba(255,255,255,.15)
+  /* テーブル間隔を詰める */
+  table {
+    width:100%;
+    border-collapse:separate;
+    border-spacing:0 3px; /* ←ここで間を狭く */
   }
-  .slot{display:inline-block;min-width:4em;font-variant-numeric:tabular-nums}
 
-  .hint{font-size:13px;opacity:.95}
-  /* “全部白”の要望に合わせ、色分けは無効化 */
-  .ok,.warn{color:inherit}
+  th, td {
+    padding:8px 8px; /* ←ここも小さめに */
+    text-align:center;
+  }
 
-  .footer{margin-top:8px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+  thead th {
+    font-size:13px;
+    opacity:.9;
+  }
 
-  /* code要素の読みやすさ確保（背景濃色＋白文字） */
-  code{
+  tbody tr {
+    background:var(--bg); /* 背景も緑で統一 */
+  }
+
+  .rank-badge {
+    display:inline-block;
+    min-width:2.4em;
+    padding:.2em .5em;
+    border-radius:999px;
+    background:rgba(0,0,0,.3);
+    border:1px solid rgba(255,255,255,.2);
+  }
+
+  .slot {
+    display:inline-block;
+    min-width:4em;
+    font-variant-numeric:tabular-nums;
+  }
+
+  .hint { font-size:13px; opacity:.95; }
+
+  .ok, .warn { color:inherit; }
+
+  .footer {
+    margin-top:8px;
+    display:flex;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+
+  code {
     background:rgba(0,0,0,.25);
     padding:.1em .35em;
     border-radius:4px;
@@ -125,7 +150,7 @@
     disable(true);
     status('');
     try{
-      const perm = randomDerangement(N); // 固定点なし
+      const perm = randomDerangement(N);
       await spinSlotsTo(perm);
       status('ルーレット完了！この対応でプレイしてね。','ok');
     } finally {
@@ -175,8 +200,7 @@
     statusEl.className = 'hint ' + (kind||'');
   }
 
-  // ---- ランダム生成（暗号学的乱数）----
-  function cryptoRandInt(min, max){ // inclusive
+  function cryptoRandInt(min, max){
     const range = max - min + 1;
     const maxUint = 0xFFFFFFFF;
     const limit = Math.floor(maxUint / range) * range;
@@ -189,23 +213,21 @@
     return min + (x % range);
   }
 
-  // サトロのアルゴリズム（単一サイクル）→固定点なし
   function randomDerangement(n){
     if(n===2) return [2,1];
     const arr = Array.from({length:n}, (_,i)=>i+1);
     for(let i=n-1;i>0;i--){
-      const j = cryptoRandInt(0, i-1); // 0..i-1（自分以外）
+      const j = cryptoRandInt(0, i-1);
       [arr[i],arr[j]] = [arr[j],arr[i]];
     }
-    return arr; // 単一サイクルなので固定点は発生しない
+    return arr;
   }
 
-  // ---- スロット風アニメ ----
   function spinSlotsTo(perm){
     const tasks = [];
     for(let i=1;i<=N;i++){
       const slotEl = rowsEl.querySelector(`[data-slot="${i}"]`);
-      tasks.push(spinOne(slotEl, perm[i-1], i*140)); // 少しディレイ
+      tasks.push(spinOne(slotEl, perm[i-1], i*140));
     }
     return Promise.all(tasks);
   }
