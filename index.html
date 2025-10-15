@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>縛り順位ルーレット（4人固定・固定点なし）</title>
+<title>縛り順位ルーレット（4人固定・完全ランダム）</title>
 <style>
   :root {
     --bg:#0b6b2b;     /* 全体背景を緑で統一 */
@@ -30,80 +30,24 @@
        1px  1px 0 var(--stroke);
   }
 
-  header {
-    padding:18px 20px;
-    border-bottom:1px solid rgba(255,255,255,.08);
-    background-color:var(--bg); /* 緑背景 */
-  }
-
-  h1 { margin:0; font-size:20px; letter-spacing:.3px; }
-
-  .wrap { max-width:760px; margin:18px auto; padding:0 16px; }
-
-  .card {
-    background:var(--bg); /* 緑で統一 */
-    border-radius:14px;
-    padding:14px 16px;
-    border:1px solid rgba(255,255,255,.15);
-  }
-
-  .controls {
-    display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:10px;
-  }
-
-  button {
-    cursor:pointer; border:0; border-radius:10px;
-    padding:10px 14px; font-weight:700;
-    background:var(--acc);
-    box-shadow:0 8px 24px rgba(122,173,221,.28);
-  }
-  button:disabled { opacity:.6; cursor:not-allowed; }
-
-  /* テーブル間隔をさらに詰める */
-  table {
-    width:100%;
-    border-collapse:separate;
-    border-spacing:0 1px; /* ←さらに狭く */
-  }
-
-  th, td {
-    padding:6px 6px; /* ←小さめに */
-    text-align:center;
-  }
-
-  thead th {
-    font-size:13px;
-    opacity:.9;
-  }
-
-  tbody tr {
-    background:var(--bg); /* 背景も緑で統一 */
-  }
-
-  .rank-badge {
-    display:inline-block;
-    min-width:2.4em;
-    padding:.2em .5em;
-    border-radius:999px;
-    background:rgba(0,0,0,.3);
-    border:1px solid rgba(255,255,255,.2);
-  }
-
-  .arrow {
-    display:inline-block;
-    min-width:1.6em;
-    padding:0 .2em; /* 縮める */
-  }
-
-  .slot {
-    display:inline-block;
-    min-width:4em;
-    font-variant-numeric:tabular-nums;
-  }
+  header{padding:18px 20px;border-bottom:1px solid rgba(255,255,255,.08);background-color:var(--bg)}
+  h1{margin:0;font-size:20px;letter-spacing:.3px}
+  .wrap{max-width:760px;margin:18px auto;padding:0 16px}
+  .card{background:var(--bg);border-radius:14px;padding:14px 16px;border:1px solid rgba(255,255,255,.15)}
+  .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+  button{cursor:pointer;border:0;border-radius:10px;padding:10px 14px;font-weight:700;background:var(--acc);box-shadow:0 8px 24px rgba(122,173,221,.28)}
+  button:disabled{opacity:.6;cursor:not-allowed}
+  table{width:100%;border-collapse:separate;border-spacing:0 1px}
+  th,td{padding:6px 6px;text-align:center}
+  thead th{font-size:13px;opacity:.9}
+  tbody tr{background:var(--bg)}
+  .rank-badge{display:inline-block;min-width:2.4em;padding:.2em .5em;border-radius:999px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.2)}
+  .arrow{display:inline-block;min-width:1.6em;padding:0 .2em}
+  .slot{display:inline-block;min-width:4em;font-variant-numeric:tabular-nums}
 </style>
 </head>
 <body>
-  <header><h1>縛り順位ルーレット（4人固定・固定点なし）</h1></header>
+  <header><h1>縛り順位ルーレット（4人固定・完全ランダム）</h1></header>
   <div class="wrap">
     <div class="card">
       <div class="controls">
@@ -127,6 +71,7 @@
 <script>
 (function(){
   const N = 4; // 4人固定
+
   const rowsEl = document.getElementById('rows');
   const spinBtn = document.getElementById('spinBtn');
   const copyBtn = document.getElementById('copyBtn');
@@ -136,8 +81,8 @@
   spinBtn.addEventListener('click', async ()=>{
     disable(true);
     try{
-      const perm = randomDerangement(N); // 固定点なしのランダム割当
-      await spinSlotsTo(perm);           // 各スロットをランダム回転→最終値に停止
+      const perm = uniformPermutation(N); // ← 完全ランダム順列
+      await spinSlotsTo(perm);
     } finally {
       disable(false);
     }
@@ -146,12 +91,7 @@
   copyBtn.addEventListener('click', async ()=>{
     const mapping = readCurrentMapping();
     const text = mapping.map(([i,v]) => `実順位 ${i} → 縛り順位 ${v ?? '（未決定）'}`).join('\n');
-    try{
-      await navigator.clipboard.writeText(text);
-      // メッセージ表示は要求により廃止
-    }catch{
-      // 失敗メッセージも廃止
-    }
+    try{ await navigator.clipboard.writeText(text); }catch{}
   });
 
   function buildRows(){
@@ -177,9 +117,7 @@
     return res;
   }
 
-  function disable(b){
-    spinBtn.disabled=b; copyBtn.disabled=b;
-  }
+  function disable(b){ spinBtn.disabled=b; copyBtn.disabled=b; }
 
   function cryptoRandInt(min, max){
     const range = max - min + 1;
@@ -194,13 +132,14 @@
     return min + (x % range);
   }
 
-  // 固定点なしの乱順（誰も自分と同じ番号にならない）
-  function randomDerangement(n){
-    if(n===2) return [2,1];
+  // ★ 完全ランダム：全順列が均等に出る Fisher–Yates shuffle
+  function uniformPermutation(n){
     const arr = Array.from({length:n}, (_,i)=>i+1);
-    for(let i=n-1;i>0;i--){
-      const j = cryptoRandInt(0, i-1); // Fisher-Yates を少し工夫して固定点回避
-      [arr[i],arr[j]] = [arr[j],arr[i]];
+    for(let i=n-1; i>0; i--){
+      const j = cryptoRandInt(0, i);
+      const tmp = arr[i];
+      arr[i] = arr[j];
+      arr[j] = tmp;
     }
     return arr;
   }
@@ -209,7 +148,7 @@
     const tasks = [];
     for(let i=1;i<=N;i++){
       const slotEl = rowsEl.querySelector(`[data-slot="${i}"]`);
-      tasks.push(spinOne(slotEl, perm[i-1], i*120)); // 少しずつ遅らせて見やすく
+      tasks.push(spinOne(slotEl, perm[i-1], i*120));
     }
     return Promise.all(tasks);
   }
