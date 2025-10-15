@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>目標順位ルーレット（4人・固定点なし）</title>
+<style>
+  :root { --bg:#0e1024; --panel:#161a35; --acc:#7ad; --txt:#eef3ff; }
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+  header{padding:18px 20px;border-bottom:1px solid rgba(255,255,255,.08)}
+  h1{margin:0;font-size:20px;letter-spacing:.3px}
+  .wrap{max-width:760px;margin:18px auto;padding:0 16px}
+  .card{background:var(--panel);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:14px 16px}
+  .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+  button{cursor:pointer;border:0;border-radius:10px;padding:10px 14px;font-weight:700;background:var(--acc);color:#041728;box-shadow:0 8px 24px rgba(122,173,221,.28)}
+  button:disabled{opacity:.6;cursor:not-allowed}
+  table{width:100%;border-collapse:separate;border-spacing:0 10px}
+  th,td{padding:12px 14px;text-align:center}
+  thead th{font-size:13px;opacity:.8}
+  tbody tr{background:#0f1430;border-radius:10px}
+  tbody tr td:first-child{border-radius:10px 0 0 10px}
+  tbody tr td:last-child{border-radius:0 10px 10px 0}
+  .rank-badge{display:inline-block;min-width:2.4em;padding:.25em .6em;border-radius:999px;background:#0a1130;border:1px solid rgba(255,255,255,.15)}
+  .slot{display:inline-block;min-width:4em;font-variant-numeric:tabular-nums}
+  .hint{font-size:13px;opacity:.85}
+  .ok{color:#9dff9d}
+  .warn{color:#ffd27a}
+  .footer{margin-top:8px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+</style>
+</head>
+<body>
+  <header><h1>目標順位ルーレット（4人固定・固定点なし）</h1></header>
+  <div class="wrap">
+    <div class="card">
+      <div class="controls">
+        <button id="spinBtn">スピン！</button>
+        <button id="copyBtn" title="結果をテキストでコピー">コピー</button>
+        <span class="hint">※毎回「自分と同じ順位」は絶対に出ません（完全入れ替え）。乱数は <code>window.crypto</code> を使用。</span>
+      </div>
+
+      <table aria-label="実順位から目標順位への対応">
+        <thead><tr><th>実順位</th><th>目標順位（結果）</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+
+      <div class="footer">
+        <span id="status" class="hint"></span>
+        <span class="hint">遊び方：回の最初に一度だけ「スピン！」→この対応を採用</span>
+      </div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  const N = 4; // 4人固定
+  const rowsEl = document.getElementById('rows');
+  const spinBtn = document.getElementById('spinBtn');
+  const copyBtn = document.getElementById('copyBtn');
+  const statusEl = document.getElementById('status');
+
+  buildRows();
+
+  spinBtn.addEventListener('click', async ()=>{
+    disable(true);
+    status('');
+    try{
+      const perm = randomDerangement(N); // 固定点なし
+      await spinSlotsTo(perm);
+      status('ルーレット完了！この対応でプレイしてね。','ok');
+    } finally {
+      disable(false);
+    }
+  });
+
+  copyBtn.addEventListener('click', async ()=>{
+    const mapping = readCurrentMapping();
+    const text = mapping.map(([i,v]) => `実順位 ${i} → 目標順位 ${v ?? '（未決定）'}`).join('\n');
+    try{
+      await navigator.clipboard.writeText(text);
+      status('結果をコピーしたよ。','ok');
+    }catch{
+      status('コピーに失敗。手動で選択してね。','warn');
+    }
+  });
+
+  function buildRows(){
+    rowsEl.innerHTML = '';
+    for(let i=1;i<=N;i++){
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><span class="rank-badge">${i} 位</span></td>
+        <td><span class="slot" data-slot="${i}">—</span></td>
+      `;
+      rowsEl.appendChild(tr);
+    }
+  }
+
+  function readCurrentMapping(){
+    const res=[];
+    for(let i=1;i<=N;i++){
+      const el = rowsEl.querySelector(`[data-slot="${i}"]`);
+      const val = parseInt(el?.dataset.value || 'NaN',10);
+      res.push([i, Number.isFinite(val)? val : null]);
+    }
+    return res;
+  }
+
+  function disable(b){
+    spinBtn.disabled=b; copyBtn.disabled=b;
+  }
+
+  function status(msg, kind){
+    statusEl.textContent = msg || '';
+    statusEl.className = 'hint ' + (kind||'');
+  }
+
+  // ---- ランダム生成（暗号学的乱数）----
+  function cryptoRandInt(min, max){ // inclusive
+    const range = max - min + 1;
+    const maxUint = 0xFFFFFFFF;
+    const limit = Math.floor(maxUint / range) * range;
+    let x;
+    do{
+      const buf = new Uint32Array(1);
+      crypto.getRandomValues(buf);
+      x = buf[0];
+    }while(x >= limit);
+    return min + (x % range);
+  }
+
+  // サトロのアルゴリズム（単一サイクル）→固定点なし
+  function randomDerangement(n){
+    if(n===2) return [2,1];
+    const arr = Array.from({length:n}, (_,i)=>i+1);
+    for(let i=n-1;i>0;i--){
+      const j = cryptoRandInt(0, i-1); // 0..i-1（自分以外）
+      [arr[i],arr[j]] = [arr[j],arr[i]];
+    }
+    // 単一サイクルなので固定点は発生しない
+    return arr;
+  }
+
+  // ---- スロット風アニメ ----
+  function spinSlotsTo(perm){
+    const tasks = [];
+    for(let i=1;i<=N;i++){
+      const slotEl = rowsEl.querySelector(`[data-slot="${i}"]`);
+      tasks.push(spinOne(slotEl, perm[i-1], i*140)); // 少しディレイ
+    }
+    return Promise.all(tasks);
+  }
+
+  function spinOne(el, target, delayMs){
+    return new Promise(resolve=>{
+      setTimeout(()=>{
+        const start = performance.now();
+        const dur = 900 + cryptoRandInt(0, 400);
+        let lastShown = null;
+        const tick = (now)=>{
+          const t = now - start;
+          if(t < dur){
+            const show = 1 + cryptoRandInt(0, N-1);
+            if(show !== lastShown){
+              el.textContent = `${show} 位`;
+              lastShown = show;
+            }
+            requestAnimationFrame(tick);
+          }else{
+            el.textContent = `${target} 位`;
+            el.dataset.value = String(target);
+            resolve();
+          }
+        };
+        requestAnimationFrame(tick);
+      }, delayMs);
+    });
+  }
+})();
+</script>
+</body>
+</html>
